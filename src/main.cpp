@@ -35,6 +35,7 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 #include <Keypad.h>
 
+//Keypad Variables
 const byte ROWS = 4; //four rows
 const byte COLS = 3; //three columns
 char keys[ROWS][COLS] = {
@@ -48,8 +49,104 @@ byte colPins[COLS] = {8, 7, 6}; //connect to the column pinouts of the keypad
 
 Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 
-void setup()
-{ 
+//LCD Menu Variables
+
+bool goToMenu = false;
+const int numOfScreens = 4;
+int currentScreen = 0;
+String screens[numOfScreens][2] = {
+    {"1.Plotter Speed","m/s"}, 
+    {"2.Liquid Speed", "l/m"}, 
+    {"3.Bed Temp","*C"},
+    {"4.Logs"," "}
+  };
+int parameters[numOfScreens];
+
+//inital declarations
+void inputAction(char input);
+void parameterChange(int key);
+void printMenuScreen();
+void homeScreen();
+void keypadEvent(KeypadEvent key);
+
+//Functions
+void inputAction(char input) {
+  Serial.println(input);
+
+  //screen previous
+  if(input == '4') {
+    if (currentScreen == 0) {
+      currentScreen = numOfScreens-1;
+    }else{
+      currentScreen--;
+    }
+  }
+  //screen next
+  else if(input == '6') {
+    if (currentScreen == numOfScreens-1) {
+      currentScreen = 0;
+    }else{
+      currentScreen++;
+    }
+  }
+  //value up
+  else if(input == '2') {
+    parameterChange(0);
+  }
+  //value down
+  else if(input == '8') {
+    parameterChange(1);
+  }
+}
+
+void parameterChange(int key) {
+  if(key == 0) {
+    parameters[currentScreen]++;
+  }else if(key == 1) {
+    parameters[currentScreen]--;
+  }
+}
+
+void printMenuScreen() {
+  lcd.clear();
+  lcd.print(screens[currentScreen][0]);
+  lcd.setCursor(0,1);
+  lcd.print(parameters[currentScreen]);
+  lcd.print(" ");
+  lcd.print(screens[currentScreen][1]);
+}
+
+void homeScreen() {
+  lcd.clear();
+  lcd.print("  Ready to Use  ");
+  lcd.setCursor(0,1);
+  lcd.print(" Press to start ");
+}
+
+// Taking care of some special events.
+void keypadEvent(KeypadEvent key) {
+  switch (keypad.getState()) {
+    case HOLD:
+      if (key == '*' && !goToMenu) {
+        Serial.println("Going to Menu");
+        goToMenu = true;
+        currentScreen = 0;
+        printMenuScreen();
+      }
+      break;
+    case PRESSED:
+      if (key == '#' && goToMenu) {
+        Serial.println("Exiting Menu");
+        goToMenu = false;
+        homeScreen();
+      }
+      break;
+    default:
+      break;
+  }
+}
+
+void setup() {
   Serial.begin(9600);
   Serial.println("Spray Pyrolysis System");
 	// initialize the LCD
@@ -58,17 +155,25 @@ void setup()
 	// Turn on the blacklight and print a message.
 	lcd.backlight();
 	lcd.print("Spray Pyrolysis");
+  // delay(1000); //add later
+
+  keypad.setHoldTime(1000);
+  keypad.addEventListener(keypadEvent); // Add an event listener for this keypad
 
   //ToDo: Add stepper motor homeing code here
+
+  homeScreen();
 }
 
-void loop()
-{
+void loop() {
 	char key = keypad.getKey();
   
-  if (key){
-    lcd.setCursor(0,1);
-    lcd.print(key);
+  if (key) {
+    Serial.print("Key: ");
     Serial.println(key);
+    if (goToMenu) {
+      inputAction(key);
+      printMenuScreen();
+    }
   }
 }
