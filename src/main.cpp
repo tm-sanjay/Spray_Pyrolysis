@@ -54,25 +54,25 @@ Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 bool goToMenu = false;
 const int numOfScreens = 4;
 int currentScreen = 0;
-String screens[numOfScreens][2] = {
-    {"1.Plotter Speed","m/s"}, 
-    {"2.Liquid Speed", "l/m"}, 
-    {"3.Bed Temp","*C"},
-    {"4.Logs"," "}
+String screens[numOfScreens][5] = {
+    //{Title,   units,   min,   max,  steps}
+    {"1.Plotter Speed","cm/s", "0", "5", "1"}, 
+    {"2.Liquid Speed", "l/m", "0", "20", "2"}, 
+    {"3.Bed Temp","*C", "0", "25", "5"},
+    {"4.Logs"," ", "0", "2", "1"}
   };
-int parameters[numOfScreens];
+int parameters[numOfScreens] = {2,5,6,0}; //default values
 
 //inital declarations
 void inputAction(char input);
 void parameterChange(int key);
+void keypadEvent(KeypadEvent key);
 void printMenuScreen();
 void homeScreen();
-void keypadEvent(KeypadEvent key);
 
-//Functions
+
+//---------------Menu Functions -----------------
 void inputAction(char input) {
-  Serial.println(input);
-
   //screen previous
   if(input == '4') {
     if (currentScreen == 0) {
@@ -91,36 +91,33 @@ void inputAction(char input) {
   }
   //value up
   else if(input == '2') {
+    //incremeant value
     parameterChange(0);
   }
   //value down
   else if(input == '8') {
+    //decrement value
     parameterChange(1);
   }
 }
 
 void parameterChange(int key) {
-  if(key == 0) {
-    parameters[currentScreen]++;
-  }else if(key == 1) {
-    parameters[currentScreen]--;
+  int presentValue = parameters[currentScreen];
+  int minValue = screens[currentScreen][2].toInt();
+  int maxValue = screens[currentScreen][3].toInt();
+  int stepValue = screens[currentScreen][4].toInt();
+
+  if (key == 0) {
+    if (presentValue < maxValue) {
+      presentValue += stepValue;
+    }
+  } else if (key == 1) {
+    if (presentValue > minValue) {
+      presentValue -= stepValue;
+    }
   }
-}
-
-void printMenuScreen() {
-  lcd.clear();
-  lcd.print(screens[currentScreen][0]);
-  lcd.setCursor(0,1);
-  lcd.print(parameters[currentScreen]);
-  lcd.print(" ");
-  lcd.print(screens[currentScreen][1]);
-}
-
-void homeScreen() {
-  lcd.clear();
-  lcd.print("  Ready to Use  ");
-  lcd.setCursor(0,1);
-  lcd.print(" Press to start ");
+  parameters[currentScreen] = presentValue;
+  Serial.println( "min:" + String(minValue) + " max:" + String(maxValue) + " step:" + String(stepValue) + " present:" + String(presentValue));
 }
 
 // Taking care of some special events.
@@ -144,6 +141,24 @@ void keypadEvent(KeypadEvent key) {
     default:
       break;
   }
+}
+
+void printMenuScreen() {
+  lcd.clear();
+  lcd.print(screens[currentScreen][0]);
+  lcd.setCursor(0,1);
+  lcd.print("     ");
+  lcd.print(parameters[currentScreen]);
+  lcd.print(" ");
+  lcd.print(screens[currentScreen][1]);
+}
+//---------------End Menu Functions -----------------
+
+void homeScreen() {
+  lcd.clear();
+  lcd.print("  Ready to Use  ");
+  lcd.setCursor(0,1);
+  lcd.print(" Press to start ");
 }
 
 void setup() {
