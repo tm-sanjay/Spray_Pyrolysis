@@ -8,9 +8,9 @@
  * Connect  to the wifi
  * Settings in the Android App
  * Start and Stop in both App and keypad
- * Long press to go to menu
- * In normal mode, press the keypad to start
- * When started is press the keypad to stop
+//  * Long press to go to menu
+//  * In normal mode, press the keypad to start
+//  * When started is press the keypad to stop
  * Limit switch at the door to stop if the door is open
  * When door is open, should not be able to start, but can go to menu
  * Once process is ended, x plotter should go back to home and SSR should be off
@@ -45,7 +45,7 @@ char keys[ROWS][COLS] = {
   {'*','0','#'}
 };
 byte rowPins[ROWS] = {5, 4, 3, 2}; //connect to the row pinouts of the keypad
-byte colPins[COLS] = {8, 7, 6}; //connect to the column pinouts of the keypad
+byte colPins[COLS] = {A0, A1, A2}; //connect to the column pinouts of the keypad
 
 Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 
@@ -56,12 +56,29 @@ const int numOfScreens = 4;
 int currentScreen = 0;
 String screens[numOfScreens][5] = {
     //{Title,   units,   min,   max,  steps}
-    {"1.Plotter Speed","cm/s", "0", "5", "1"}, 
+    {"1.Plotter Speed", "cm/s", "0", "5", "1"}, 
     {"2.Liquid Speed", "l/m", "0", "20", "2"}, 
-    {"3.Bed Temp","*C", "0", "25", "5"},
-    {"4.Logs"," ", "0", "2", "1"}
+    {"3.Bed Temp", "*C", "0", "25", "5"},
+    {"4.Logs", " ", "0", "2", "1"}
   };
-int parameters[numOfScreens] = {2,5,6,0}; //default values
+int parameters[numOfScreens] = {1,2,5,0}; //default values
+
+
+//Variables
+bool runState = false;
+
+//enum for the process states
+enum Process {
+  START,
+  END,
+  NONE
+};
+
+enum Process processState = NONE;
+
+//Variables for not blocking progress indication
+unsigned long lastTime = 0;
+int dotPosition = 0;
 
 //inital declarations
 void inputAction(char input);
@@ -69,6 +86,10 @@ void parameterChange(int key);
 void keypadEvent(KeypadEvent key);
 void printMenuScreen();
 void homeScreen();
+void startProcessScreen();
+void startProcess();
+void endProcessScreen();
+void endProcess();
 
 
 //---------------Menu Functions -----------------
@@ -161,6 +182,51 @@ void homeScreen() {
   lcd.print(" Press to start ");
 }
 
+void startProcessScreen() {
+  lcd.clear();
+  lcd.print("  Processing    ");
+  lcd.setCursor(0,1);
+  lcd.print("  Press to stop ");
+}
+
+void progressScreen() {
+  //non blocking progress indication
+  if (millis() - lastTime > 100) {
+    lastTime = millis();
+    if (dotPosition == 0) {
+      lcd.setCursor(12,0);
+      lcd.print(".");
+      dotPosition = 1;
+    } else if (dotPosition == 1) {
+      lcd.setCursor(13,0);
+      lcd.print(".");
+      dotPosition = 2;
+    } else if (dotPosition == 2) {
+      lcd.setCursor(14,0); 
+      lcd.print(".");
+      dotPosition = 3;
+    } else {
+      lcd.setCursor(12,0);
+      lcd.print("   ");
+      dotPosition = 0;
+    }
+  }
+}
+
+void startProcess() {
+  progressScreen();
+}
+
+void endProcessScreen() {
+  lcd.clear();
+  lcd.print(" Process Ended! ");
+  lcd.setCursor(0,1);
+  lcd.print(" Press to start ");
+}
+
+void endProcess() { 
+}
+
 void setup() {
   Serial.begin(9600);
   Serial.println("Spray Pyrolysis System");
@@ -189,6 +255,29 @@ void loop() {
     if (goToMenu) {
       inputAction(key);
       printMenuScreen();
+      // runState = false;
+      processState = NONE;
     }
+    else {
+      if(key == '*' || key == '#') return; // '*,#' are menu keys
+      if (processState == START) {
+        // runState = false;
+        processState = END;
+        endProcessScreen();
+        Serial.println("Process Ended");
+      } else {
+        // runState = true;
+        processState = START;
+        startProcessScreen();
+        Serial.println("Starting Process");
+      }
+    }
+  }
+  
+  if (processState == START) {
+    startProcess();
+  }
+  else if (processState == END) {
+    endProcess();
   }
 }
