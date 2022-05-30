@@ -77,7 +77,11 @@ int parameters[numOfScreens] = {1,2,5,0}; //default values
 
 
 //Variables
-bool runState = false;
+bool doorState = false;
+bool doorPrevState = true;
+
+bool homeStopState = false;
+bool endStopState = false;
 
 //enum for the process states
 enum Process {
@@ -103,6 +107,7 @@ void startProcessScreen();
 void startProcess();
 void endProcessScreen();
 void endProcess();
+void checkForEndStop();
 void keyHandler();
 
 //---------------Menu Functions -----------------
@@ -158,7 +163,7 @@ void parameterChange(int key) {
 void keypadEvent(KeypadEvent key) {
   switch (keypad.getState()) {
     case HOLD:
-      if (key == '*' && !goToMenu) {
+      if (key == '*' && !goToMenu && processState != START) {
         Serial.println("Going to Menu");
         goToMenu = true;
         currentScreen = 0;
@@ -166,7 +171,7 @@ void keypadEvent(KeypadEvent key) {
       }
       break;
     case PRESSED:
-      if (key == '#' && goToMenu) {
+      if (key == '#' && goToMenu && processState != START) {
         Serial.println("Exiting Menu");
         goToMenu = false;
         homeScreen();
@@ -230,7 +235,9 @@ void progressScreen() {
 }
 
 void startProcess() {
+  digitalWrite(COMPRESSOR_PIN, HIGH);
   progressScreen();
+  checkForEndStop();
 }
 
 void endProcessScreen() {
@@ -241,6 +248,37 @@ void endProcessScreen() {
 }
 
 void endProcess() { 
+  processState = END;
+  digitalWrite(COMPRESSOR_PIN, LOW);
+}
+
+void doorCheck() {
+  doorState = digitalRead(DOOR_PIN);
+  if (doorState != doorPrevState) {
+    doorPrevState = doorState;
+    if (doorState == HIGH) {
+      Serial.println("Door is Closed");
+      homeScreen();
+    } else {
+      Serial.println("Door is open");
+      lcd.clear();
+      lcd.print("  Door is open!  ");
+      lcd.setCursor(0,1);
+      lcd.print(" Close to start  ");
+
+      //Stop all the processes
+      endProcess();
+    }
+  }
+}
+
+void checkForEndStop() {
+  if (digitalRead(END_STOP_PIN) == HIGH && processState == START) {
+    processState = END;
+    Serial.println("End Stop");
+    endProcessScreen();
+    endProcess();
+  }
 }
 
 void keyHandler() {
@@ -251,19 +289,16 @@ void keyHandler() {
     if (goToMenu) {
       inputAction(key);
       printMenuScreen();
-      // runState = false;
       processState = NONE;
     }
     else {
       if(key == '*' || key == '#') return; // '*,#' are menu keys
-
+      if(doorState == LOW) return; //door is open
       if (processState == START) {
-        // runState = false;
         processState = END;
         endProcessScreen();
         Serial.println("Process Ended");
       } else {
-        // runState = true;
         processState = START;
         startProcessScreen();
         Serial.println("Starting Process");
@@ -308,11 +343,13 @@ void setup() {
 
 void loop() {
 	keyHandler();
-
-  if (processState == START) {
-    startProcess();
+  if(!goToMenu) {
+    doorCheck();
+    if (processState == START) {
+      startProcess();
+    }
+    else if (processState == END) {
+      endProcess();
   }
-  else if (processState == END) {
-    endProcess();
   }
 }
