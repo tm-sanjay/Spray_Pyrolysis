@@ -63,6 +63,18 @@ String screens[numOfScreens][5] = {
   };
 int parameters[numOfScreens] = {1,2,5,0}; //default values
 
+//INPUTS
+#define DOOR_PIN A3
+#define HOME_STOP_PIN 6
+#define END_STOP_PIN 7
+
+//OUTPUTS
+#define MOTOR_STEP_PIN 9
+#define MOTOR_DIR_PIN 10
+#define PUMP_MOTOR_PIN 11 //only one direction //IN1 pin
+#define SSR_PIN 12
+#define COMPRESSOR_PIN 13
+
 
 //Variables
 bool runState = false;
@@ -85,12 +97,13 @@ void inputAction(char input);
 void parameterChange(int key);
 void keypadEvent(KeypadEvent key);
 void printMenuScreen();
+void stepperMotorHome();
 void homeScreen();
 void startProcessScreen();
 void startProcess();
 void endProcessScreen();
 void endProcess();
-
+void keyHandler();
 
 //---------------Menu Functions -----------------
 void inputAction(char input) {
@@ -174,6 +187,9 @@ void printMenuScreen() {
   lcd.print(screens[currentScreen][1]);
 }
 //---------------End Menu Functions -----------------
+void stepperMotorHome() {
+
+}
 
 void homeScreen() {
   lcd.clear();
@@ -227,6 +243,35 @@ void endProcessScreen() {
 void endProcess() { 
 }
 
+void keyHandler() {
+  char key = keypad.getKey();
+  if (key) {
+    Serial.print("Key: ");
+    Serial.println(key);
+    if (goToMenu) {
+      inputAction(key);
+      printMenuScreen();
+      // runState = false;
+      processState = NONE;
+    }
+    else {
+      if(key == '*' || key == '#') return; // '*,#' are menu keys
+
+      if (processState == START) {
+        // runState = false;
+        processState = END;
+        endProcessScreen();
+        Serial.println("Process Ended");
+      } else {
+        // runState = true;
+        processState = START;
+        startProcessScreen();
+        Serial.println("Starting Process");
+      }
+    }
+  }
+}
+
 void setup() {
   Serial.begin(9600);
   Serial.println("Spray Pyrolysis System");
@@ -241,39 +286,29 @@ void setup() {
   keypad.setHoldTime(1000);
   keypad.addEventListener(keypadEvent); // Add an event listener for this keypad
 
-  //ToDo: Add stepper motor homeing code here
+  pinMode(MOTOR_STEP_PIN, OUTPUT);
+  pinMode(MOTOR_DIR_PIN, OUTPUT);
+  pinMode(PUMP_MOTOR_PIN, OUTPUT);
+  pinMode(SSR_PIN, OUTPUT);
+  pinMode(COMPRESSOR_PIN, OUTPUT);
+  pinMode(HOME_STOP_PIN, INPUT);
+  pinMode(END_STOP_PIN, INPUT);
+  pinMode(DOOR_PIN, INPUT);
 
+  digitalWrite(MOTOR_STEP_PIN, LOW);
+  digitalWrite(MOTOR_DIR_PIN, LOW);
+  digitalWrite(PUMP_MOTOR_PIN, LOW);
+  digitalWrite(SSR_PIN, LOW);
+  digitalWrite(COMPRESSOR_PIN, LOW);
+  
+  //ToDo: Add stepper motor homeing code here
+  stepperMotorHome();
   homeScreen();
 }
 
 void loop() {
-	char key = keypad.getKey();
-  
-  if (key) {
-    Serial.print("Key: ");
-    Serial.println(key);
-    if (goToMenu) {
-      inputAction(key);
-      printMenuScreen();
-      // runState = false;
-      processState = NONE;
-    }
-    else {
-      if(key == '*' || key == '#') return; // '*,#' are menu keys
-      if (processState == START) {
-        // runState = false;
-        processState = END;
-        endProcessScreen();
-        Serial.println("Process Ended");
-      } else {
-        // runState = true;
-        processState = START;
-        startProcessScreen();
-        Serial.println("Starting Process");
-      }
-    }
-  }
-  
+	keyHandler();
+
   if (processState == START) {
     startProcess();
   }
