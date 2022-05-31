@@ -11,21 +11,21 @@
 //  * Long press to go to menu
 //  * In normal mode, press the keypad to start
 //  * When started is press the keypad to stop
- * Limit switch at the door to stop if the door is open
- * When door is open, should not be able to start, but can go to menu
+//  * Limit switch at the door to stop if the door is open
+//  * When door is open, should not be able to start, but can go to menu
  * Once process is ended, x plotter should go back to home and SSR should be off
  * Every to before starting Should auto home x plotter
  * When Start is pressed, should wait until set temp is reached
- * If the door is open it should say close the door and press to start
- * When the process is started timer should start and when ended should stop, and record the time
+//  * If the door is open it should say close the door and press to start
+//  * When the process is started, timer should start and when ended should stop, and record the time
  * every thing should be reflected in the app
  */
 
 /* Menu to be added
  * Settings 
- * - X plotter Speed
- * - Water Pump Speed
- * - Base Plate Temperature
+//  * - X plotter Speed
+//  * - Water Pump Speed
+//  * - Base Plate Temperature
  * Logs
  * - all run time 
  */
@@ -93,8 +93,13 @@ enum Process {
 enum Process processState = NONE;
 
 //Variables for not blocking progress indication
-unsigned long lastTime = 0;
+unsigned long dotChangedTime = 0;
 int dotPosition = 0;
+
+//Variables to track the process time
+unsigned long startTime = 0;
+unsigned long totalTime = 0;
+int listOfTimes[10];
 
 //inital declarations
 void inputAction(char input);
@@ -208,12 +213,14 @@ void startProcessScreen() {
   lcd.print("  Processing    ");
   lcd.setCursor(0,1);
   lcd.print("  Press to stop ");
+  //start the timer
+  startTime = millis();
 }
 
 void progressScreen() {
   //non blocking progress indication
-  if (millis() - lastTime > 100) {
-    lastTime = millis();
+  if (millis() - dotChangedTime > 100) {
+    dotChangedTime = millis();
     if (dotPosition == 0) {
       lcd.setCursor(12,0);
       lcd.print(".");
@@ -245,6 +252,20 @@ void endProcessScreen() {
   lcd.print(" Process Ended! ");
   lcd.setCursor(0,1);
   lcd.print(" Press to start ");
+  totalTime = millis() - startTime;
+  Serial.print("Time taken: ");
+  Serial.println(totalTime);
+  // add the time to the list
+  listOfTimes[0] = totalTime;
+  // shift the list
+  for (int i = 10; i > 0; i--) {
+    listOfTimes[i] = listOfTimes[i-1];
+  }
+  Serial.print("List of times: ");
+  for (int i = 0; i < 10; i++) {
+    Serial.print(listOfTimes[i]);
+    Serial.print(" ");
+  }
 }
 
 void endProcess() { 
@@ -262,10 +283,9 @@ void doorCheck() {
     } else {
       Serial.println("Door is open");
       lcd.clear();
-      lcd.print("  Door is open!  ");
+      lcd.print(" Door is open!   ");
       lcd.setCursor(0,1);
       lcd.print(" Close to start  ");
-
       //Stop all the processes
       endProcess();
     }
@@ -275,7 +295,7 @@ void doorCheck() {
 void checkForEndStop() {
   if (digitalRead(END_STOP_PIN) == HIGH && processState == START) {
     processState = END;
-    Serial.println("End Stop");
+    Serial.println("End-Stop Triggered");
     endProcessScreen();
     endProcess();
   }
@@ -350,6 +370,6 @@ void loop() {
     }
     else if (processState == END) {
       endProcess();
-  }
+    }
   }
 }
