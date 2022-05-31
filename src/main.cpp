@@ -59,9 +59,11 @@ String screens[numOfScreens][5] = {
     {"1.Plotter Speed", "cm/s", "0", "5", "1"}, 
     {"2.Liquid Speed", "l/m", "0", "20", "2"}, 
     {"3.Bed Temp", "*C", "0", "25", "5"},
-    {"4.Logs", " ", "0", "2", "1"}
+    {"4.Logs", " ", "0", "0", "0"} //This log wont be displayed
   };
 int parameters[numOfScreens] = {1,2,5,0}; //default values
+
+uint8_t logScreenPosition = 3;
 
 //INPUTS
 #define DOOR_PIN A3
@@ -99,7 +101,8 @@ int dotPosition = 0;
 //Variables to track the process time
 unsigned long startTime = 0;
 unsigned long totalTime = 0;
-int listOfTimes[10];
+int runTimeList[10];
+int runTimeListIndex = 0;
 
 //inital declarations
 void inputAction(char input);
@@ -146,6 +149,22 @@ void inputAction(char input) {
 }
 
 void parameterChange(int key) {
+  if(currentScreen == logScreenPosition) {
+    if (key == 0) {
+      int lenthOfList = sizeof(runTimeList)/sizeof(runTimeList[0]);
+      //i.e index is 0-9 (-1) and first 2 elements are visible(-2), so -3
+      if(runTimeListIndex < lenthOfList-3) { 
+        runTimeListIndex++;
+      }
+    }else if (key == 1) {
+      //runTimeListIndex decrement upto 0
+      if(runTimeListIndex > 0) {
+        runTimeListIndex--;
+      }
+    }
+    return;
+  }
+
   int presentValue = parameters[currentScreen];
   int minValue = screens[currentScreen][2].toInt();
   int maxValue = screens[currentScreen][3].toInt();
@@ -172,6 +191,7 @@ void keypadEvent(KeypadEvent key) {
         Serial.println("Going to Menu");
         goToMenu = true;
         currentScreen = 0;
+        runTimeListIndex = 0;
         printMenuScreen();
       }
       break;
@@ -188,6 +208,22 @@ void keypadEvent(KeypadEvent key) {
 }
 
 void printMenuScreen() {
+  //check for log screen
+  if(currentScreen == logScreenPosition) {
+    Serial.println("Log Screen");
+    lcd.clear();
+    lcd.print("4.Logs =>");
+    lcd.setCursor(9,0);
+    lcd.print(runTimeListIndex+1); //index stars from 0 so add 1
+    lcd.print("-");
+    lcd.print(runTimeList[runTimeListIndex+1]); //0,1 index value are same. i.e. display from index 1
+    lcd.setCursor(9,1);
+    lcd.print(runTimeListIndex+2); //index stars from 0, this is second value so add 2
+    lcd.print("-");
+    lcd.print(runTimeList[runTimeListIndex+2]);
+    return;
+  }
+
   lcd.clear();
   lcd.print(screens[currentScreen][0]);
   lcd.setCursor(0,1);
@@ -256,14 +292,15 @@ void endProcessScreen() {
   Serial.print("Time taken: ");
   Serial.println(totalTime);
   // add the time to the list
-  listOfTimes[0] = totalTime;
+  runTimeList[0] = totalTime;
   // shift the list
-  for (int i = 10; i > 0; i--) {
-    listOfTimes[i] = listOfTimes[i-1];
+  int lenthOfList = sizeof(runTimeList)/sizeof(runTimeList[0]);
+  for (int i = lenthOfList; i > 0; i--) {
+    runTimeList[i] = runTimeList[i-1];
   }
   Serial.print("List of times: ");
-  for (int i = 0; i < 10; i++) {
-    Serial.print(listOfTimes[i]);
+  for (int i = 0; i < lenthOfList; i++) {
+    Serial.print(runTimeList[i]);
     Serial.print(" ");
   }
 }
