@@ -27,7 +27,7 @@
 //  * - Water Pump Speed
 //  * - Base Plate Temperature
  * Logs
- * - all run time 
+//  * - all run time 
  */
 
 // Set the LCD address to 0x27 for a 16 chars and 2 line display
@@ -57,11 +57,11 @@ int currentScreen = 0;
 String screens[numOfScreens][5] = {
     //{Title,   units,   min,   max,  steps}
     {"1.Plotter Speed", "cm/s", "0", "5", "1"}, 
-    {"2.Liquid Speed", "l/m", "0", "20", "2"}, 
+    {"2.Liquid Speed", "l/m", "0", "255", "10"}, 
     {"3.Bed Temp", "*C", "0", "25", "5"},
     {"4.Logs", " ", "0", "0", "0"} //This log wont be displayed
   };
-int parameters[numOfScreens] = {1,2,5,0}; //default values
+int parameters[numOfScreens] = {1, 200, 5, 0}; //default values
 
 uint8_t logScreenPosition = 3;
 
@@ -103,6 +103,8 @@ unsigned long startTime = 0;
 unsigned long totalTime = 0;
 int runTimeList[10];
 int runTimeListIndex = 0;
+
+uint8_t pumpSpeed = 0;
 
 //inital declarations
 void inputAction(char input);
@@ -210,7 +212,7 @@ void keypadEvent(KeypadEvent key) {
 void printMenuScreen() {
   //check for log screen
   if(currentScreen == logScreenPosition) {
-    Serial.println("Log Screen");
+    // Serial.println("Log Screen");
     lcd.clear();
     lcd.print("4.Logs =>");
     lcd.setCursor(9,0);
@@ -242,6 +244,9 @@ void homeScreen() {
   lcd.print("  Ready to Use  ");
   lcd.setCursor(0,1);
   lcd.print(" Press to start ");
+
+  pumpSpeed = parameters[1]; //liquid speed position is 1
+  Serial.println("Pump Speed:" + String(pumpSpeed));
 }
 
 void startProcessScreen() {
@@ -278,9 +283,11 @@ void progressScreen() {
 }
 
 void startProcess() {
-  digitalWrite(COMPRESSOR_PIN, HIGH);
   progressScreen();
   checkForEndStop();
+
+  digitalWrite(COMPRESSOR_PIN, HIGH);
+  analogWrite(PUMP_MOTOR_PIN, pumpSpeed);
 }
 
 void endProcessScreen() {
@@ -308,6 +315,7 @@ void endProcessScreen() {
 void endProcess() { 
   processState = END;
   digitalWrite(COMPRESSOR_PIN, LOW);
+  analogWrite(PUMP_MOTOR_PIN, 0);
 }
 
 void doorCheck() {
@@ -389,7 +397,7 @@ void setup() {
 
   digitalWrite(MOTOR_STEP_PIN, LOW);
   digitalWrite(MOTOR_DIR_PIN, LOW);
-  digitalWrite(PUMP_MOTOR_PIN, LOW);
+  analogWrite(PUMP_MOTOR_PIN, 0);
   digitalWrite(SSR_PIN, LOW);
   digitalWrite(COMPRESSOR_PIN, LOW);
   
