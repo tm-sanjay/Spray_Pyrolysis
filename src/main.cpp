@@ -58,15 +58,16 @@ String screens[numOfScreens][5] = {
     //{Title,   units,   min,   max,  steps}
     {"1.Plotter Speed", "cm/s", "0", "5", "1"}, 
     {"2.Liquid Speed", "l/m", "0", "255", "10"}, 
-    {"3.Bed Temp", "*C", "0", "25", "5"},
+    {"3.Bed Temp", "*C", "50", "300", "5"},
     {"4.Logs", " ", "0", "0", "0"} //This log wont be displayed
   };
-int parameters[numOfScreens] = {1, 200, 5, 0}; //default values
+int parameters[numOfScreens] = {1, 200, 50, 0}; //default values
 
 uint8_t logScreenPosition = 3;
 
 //INPUTS
-#define DOOR_PIN A3
+#define DOOR_PIN 8
+#define TEMP_SENSOR_PIN A3 //max temp is 250
 #define HOME_STOP_PIN 6
 #define END_STOP_PIN 7
 
@@ -106,6 +107,24 @@ int runTimeListIndex = 0;
 
 uint8_t pumpSpeed = 0;
 
+
+//Variables for temperature
+// resistance at 25 degrees C
+#define THERMISTORNOMINAL 100000      
+// temp. for nominal resistance (almost always 25 C)
+#define TEMPERATURENOMINAL 25   
+// how many samples to take and average, more takes longer
+// but is more 'smooth'
+#define NUMSAMPLES 5
+// The beta coefficient of the thermistor (usually 3000-4000)
+#define BCOEFFICIENT 3950
+// the value of the 'other' resistor
+#define SERIESRESISTOR 100000 
+
+int samples[NUMSAMPLES];
+
+unsigned long tempCheckTime = 0;
+
 //inital declarations
 void inputAction(char input);
 void parameterChange(int key);
@@ -119,6 +138,8 @@ void endProcessScreen();
 void endProcess();
 void checkForEndStop();
 void keyHandler();
+float checkTemp();
+void activateSSR();
 
 //---------------Menu Functions -----------------
 void inputAction(char input) {
@@ -288,6 +309,7 @@ void startProcess() {
 
   digitalWrite(COMPRESSOR_PIN, HIGH);
   analogWrite(PUMP_MOTOR_PIN, pumpSpeed);
+  activateSSR();
 }
 
 void endProcessScreen() {
@@ -316,6 +338,7 @@ void endProcess() {
   processState = END;
   digitalWrite(COMPRESSOR_PIN, LOW);
   analogWrite(PUMP_MOTOR_PIN, 0);
+  digitalWrite(SSR_PIN, LOW);
 }
 
 void doorCheck() {
@@ -372,20 +395,72 @@ void keyHandler() {
   }
 }
 
+float checkTemp() {
+  uint8_t i;
+  float average;
+
+  // take N samples in a row, with a slight delay
+  for (i=0; i< NUMSAMPLES; i++) {
+    samples[i] = analogRead(TEMP_SENSOR_PIN);
+    delay(10);
+  }
+  
+  // average all the samples out
+  average = 0;
+  for (i=0; i< NUMSAMPLES; i++) {
+      average += samples[i];
+  }
+  average /= NUMSAMPLES;
+
+  // Serial.print("Average analog reading "); 
+  // Serial.println(average);
+  
+  // convert the value to resistance
+  average = 1023 / average - 1;
+  average = SERIESRESISTOR / average;
+  // Serial.print("Thermistor resistance "); 
+  // Serial.println(average);
+  
+  float steinhart;    // value of the steinhart-Hart equation 
+  steinhart = average / THERMISTORNOMINAL;     // (R/Ro)
+  steinhart = log(steinhart);                  // ln(R/Ro)
+  steinhart /= BCOEFFICIENT;                   // 1/B * ln(R/Ro)
+  steinhart += 1.0 / (TEMPERATURENOMINAL + 273.15); // + (1/To)
+  steinhart = 1.0 / steinhart;                 // Invert
+  steinhart -= 273.15;                         // convert absolute temp to C
+  
+  Serial.print("Temperature "); 
+  Serial.print(steinhart);
+  Serial.println(" *C");
+
+  return steinhart;
+}
+
+void activateSSR() {
+  //every 2 seconds, check the temperature
+  if (millis() - tempCheckTime > 2000) {
+    tempCheckTime = millis();
+    Serial.print("Checking Temperature: ");
+    Serial.print(checkTemp());
+    Serial.println(" p2: " + String(parameters[2]));
+    float temp = checkTemp();
+    //parameters[2] is temp. i.e. 2 is the index of temp Menu
+    if (temp < parameters[2]) { //if temp is less than the set-temp then activate the SSR
+      Serial.println("Temprature is less, SSR High");
+      digitalWrite(SSR_PIN, HIGH);
+    } else {
+      Serial.println("Temprature is greater, SSR Low");
+      digitalWrite(SSR_PIN, LOW);
+    }
+  }
+}
+//-----------------End Functions ---------------------
+
 void setup() {
   Serial.begin(9600);
   Serial.println("Spray Pyrolysis System");
-	// initialize the LCD
-	lcd.begin();
-
-	// Turn on the blacklight and print a message.
-	lcd.backlight();
-	lcd.print("Spray Pyrolysis");
-  // delay(1000); //add later
-
-  keypad.setHoldTime(1000);
-  keypad.addEventListener(keypadEvent); // Add an event listener for this keypad
-
+	
+  //initialize the IO pins
   pinMode(MOTOR_STEP_PIN, OUTPUT);
   pinMode(MOTOR_DIR_PIN, OUTPUT);
   pinMode(PUMP_MOTOR_PIN, OUTPUT);
@@ -394,6 +469,7 @@ void setup() {
   pinMode(HOME_STOP_PIN, INPUT);
   pinMode(END_STOP_PIN, INPUT);
   pinMode(DOOR_PIN, INPUT);
+  pinMode(TEMP_SENSOR_PIN, INPUT);
 
   digitalWrite(MOTOR_STEP_PIN, LOW);
   digitalWrite(MOTOR_DIR_PIN, LOW);
@@ -401,9 +477,20 @@ void setup() {
   digitalWrite(SSR_PIN, LOW);
   digitalWrite(COMPRESSOR_PIN, LOW);
   
+  keypad.setHoldTime(1000); //hold time for the Menu keys
+  keypad.addEventListener(keypadEvent); // Add an event listener for this keypad
+
+  // initialize the LCD
+	lcd.begin();
+	lcd.backlight();
+	lcd.print("Spray Pyrolysis");
+  // delay(1000); //add later
+
+  homeScreen();
+  analogReference(EXTERNAL);
+
   //ToDo: Add stepper motor homeing code here
   stepperMotorHome();
-  homeScreen();
 }
 
 void loop() {
