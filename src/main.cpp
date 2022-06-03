@@ -445,10 +445,10 @@ void activateSSR() {
     Serial.println(" p2: " + String(parameters[2]));
     float temp = checkTemp();
     //parameters[2] is temp. i.e. 2 is the index of temp Menu
-    if (temp < parameters[2]) { //if temp is less than the set-temp then activate the SSR
+    if (temp < parameters[2] - 10) { //the range is setTemp and setTemp - 10
       Serial.println("Temprature is less, SSR High");
       digitalWrite(SSR_PIN, HIGH);
-    } else {
+    } else if (temp > parameters[2]) {
       Serial.println("Temprature is greater, SSR Low");
       digitalWrite(SSR_PIN, LOW);
     }
