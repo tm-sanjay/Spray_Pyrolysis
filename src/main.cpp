@@ -54,7 +54,7 @@ const int numOfScreens = 4;
 int currentScreen = 0;
 String screens[numOfScreens][5] = {
     //{Title,   units,   min,   max,  steps}
-    {"1.Plotter Speed", "cm/s", "0", "5", "1"}, 
+    {"1.Plotter Speed", "cm/s", "1", "10", "1"}, 
     {"2.Liquid Speed", "l/m", "0", "255", "10"}, 
     {"3.Bed Temp", "*C", "50", "300", "5"},
     {"4.Logs", " ", "0", "0", "0"} //This log wont be displayed
@@ -265,6 +265,7 @@ void printMenuScreen() {
 //---------------Functions -----------------
 void stepperMotorHome() {
   //  Set Max Speed and Acceleration of each Steppers at startup for homing
+  stepper.setSpeed(100.0);
   stepper.setMaxSpeed(100.0);      // Set Max Speed of Stepper (Slower to get better accuracy)
   stepper.setAcceleration(100.0);  // Set Acceleration of Stepper
 
@@ -284,6 +285,7 @@ void stepperMotorHome() {
   }
 
   stepper.setCurrentPosition(0);  // Set the current position as zero for now
+  stepper.setSpeed(100.0);        // Set the speed of the stepper
   stepper.setMaxSpeed(100.0);      // Set Max Speed of Stepper (Slower to get better accuracy)
   stepper.setAcceleration(100.0);  // Set Acceleration of Stepper
   initial_homing=1;
@@ -302,14 +304,22 @@ void stepperMotorHome() {
   Serial.println("");
   stepper.setMaxSpeed(1000.0);      // Set Max Speed of Stepper (Faster for regular movements)
   stepper.setAcceleration(1000.0);  // Set Acceleration of Stepper
-  stepper.setSpeed(500);
+  
+  float stepperSteps = parameters[0] * 100; // index of Stepper Speed is 0. (value*100)
+  Serial.println(stepperSteps);
+  stepper.setSpeed(stepperSteps); 
 }
 
 void stepperMotorMove() {
   if(!digitalRead(END_STOP_PIN)) {
-    stepper.setSpeed(500);
+    Serial.println(stepper.speed()); //! donot remove this line
+    // float stepperSteps = parameters[0] * 100; // index of Stepper Speed is 0. (value*100)
+    // Serial.println(stepperSteps);
+    // stepper.setSpeed(stepperSteps); 
     stepper.runSpeed();
-    stepper.run();  // Move Stepper into position
+    // stepper.run();  // Move Stepper into position
+  } else {
+    stepper.setSpeed(0);
   }
 }
 
@@ -514,7 +524,7 @@ void activateSSR() {
 //-----------------End Functions ---------------------
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(9600); //! donot remove this line
   Serial.println("Spray Pyrolysis System");
 	
   //initialize the IO pins
