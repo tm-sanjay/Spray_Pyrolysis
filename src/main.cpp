@@ -5,7 +5,7 @@
 #include <AccelStepper.h>
 
 /* Features
- * Connect  to the wifi
+ * Connect to the wifi
  * Settings in the Android App
  * Start and Stop in both App and keypad
 //  * Long press to go to menu
@@ -13,8 +13,8 @@
 //  * When started is press the keypad to stop
 //  * Limit switch at the door to stop if the door is open
 //  * When door is open, should not be able to start, but can go to menu
- * Once process is ended, x plotter should go back to home and SSR should be off
- * Every to before starting Should auto home x plotter
+//  * Once process is ended, SSR should be off
+//  * Every to before starting Should auto home x plotter
  * When Start is pressed, should wait until set temp is reached
 //  * If the door is open it should say close the door and press to start
 //  * When the process is started, timer should start and when ended should stop, and record the time
@@ -31,7 +31,7 @@
  */
 
 // Set the LCD address to 0x27 for a 16 chars and 2 line display
-LiquidCrystal_I2C lcd(0x27, 16, 2);
+LiquidCrystal_I2C lcd(0x27, 16, 2); //GPIO 22,21 for i2c
 
 //Keypad Variables
 const byte ROWS = 4; //four rows
@@ -42,8 +42,8 @@ char keys[ROWS][COLS] = {
   {'7','8','9'},
   {'*','0','#'}
 };
-byte rowPins[ROWS] = {5, 4, 3, 2}; //connect to the row pinouts of the keypad
-byte colPins[COLS] = {A0, A1, A2}; //connect to the column pinouts of the keypad
+byte rowPins[ROWS] = {32, 33, 25, 26}; //connect to the row pinouts of the keypad
+byte colPins[COLS] = {39, 34, 35}; //connect to the column pinouts of the keypad
 
 Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 
@@ -64,17 +64,17 @@ int parameters[numOfScreens] = {1, 200, 50, 0}; //default values
 uint8_t logScreenPosition = 3;
 
 //INPUTS
-#define DOOR_PIN 8
-#define TEMP_SENSOR_PIN A3 //max temp is 250
-#define HOME_STOP_PIN 6
-#define END_STOP_PIN 7
+#define DOOR_PIN 27
+#define TEMP_SENSOR_PIN 14 //ADC //max temp is 250
+#define HOME_STOP_PIN 12
+#define END_STOP_PIN 13
 
 //OUTPUTS
-#define MOTOR_STEP_PIN 9
-#define MOTOR_DIR_PIN 10
-#define PUMP_MOTOR_PIN 11 //only one direction //IN1 pin
-#define SSR_PIN 12
-#define COMPRESSOR_PIN 13
+#define MOTOR_STEP_PIN 0 //PWM
+#define MOTOR_DIR_PIN 15
+#define PUMP_MOTOR_PIN 2 //only one direction PWM //IN1 pin
+#define SSR_PIN 4
+#define COMPRESSOR_PIN 16
 
 
 //Variables
@@ -483,7 +483,7 @@ float checkTemp() {
   // Serial.println(average);
   
   // convert the value to resistance
-  average = 1023 / average - 1;
+  average = 1023 / average - 1; //for esp32 4095 / average - 1;
   average = SERIESRESISTOR / average;
   // Serial.print("Thermistor resistance "); 
   // Serial.println(average);
@@ -555,7 +555,7 @@ void setup() {
 
   stepperMotorHome();
   homeScreen();
-  analogReference(EXTERNAL);
+  // analogReference(EXTERNAL); //not applicable for esp32
 }
 
 void loop() {
