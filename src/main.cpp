@@ -2,7 +2,7 @@
 #include <Wire.h> 
 #include <LiquidCrystal_I2C.h>
 #include <Keypad.h>
-
+#include <AccelStepper.h>
 
 /* Features
  * Connect  to the wifi
@@ -32,8 +32,6 @@
 
 // Set the LCD address to 0x27 for a 16 chars and 2 line display
 LiquidCrystal_I2C lcd(0x27, 16, 2);
-
-#include <Keypad.h>
 
 //Keypad Variables
 const byte ROWS = 4; //four rows
@@ -124,6 +122,13 @@ uint8_t pumpSpeed = 0;
 int samples[NUMSAMPLES];
 
 unsigned long tempCheckTime = 0;
+
+//Stepper Motor Variables
+#define motorInterfaceType 1 //A4988
+long initial_homing = -1;  // Used to Home Stepper at startup
+// Create a new instance of the AccelStepper class:
+AccelStepper stepper = AccelStepper(motorInterfaceType, MOTOR_STEP_PIN, MOTOR_DIR_PIN);
+
 
 //inital declarations
 void inputAction(char input);
@@ -256,8 +261,56 @@ void printMenuScreen() {
   lcd.print(screens[currentScreen][1]);
 }
 //---------------End Menu Functions -----------------
-void stepperMotorHome() {
 
+//---------------Functions -----------------
+void stepperMotorHome() {
+  //  Set Max Speed and Acceleration of each Steppers at startup for homing
+  stepper.setMaxSpeed(100.0);      // Set Max Speed of Stepper (Slower to get better accuracy)
+  stepper.setAcceleration(100.0);  // Set Acceleration of Stepper
+
+  Serial.print("Stepper is Homing . . . .");
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Homing Stepper..");
+  lcd.setCursor(0,1);
+  lcd.print("  Please Wait   ");
+  // Make the Stepper move counter clockwise until the switch is activated(HIGH)
+  while(!digitalRead(HOME_STOP_PIN)) {
+    // Serial.println("CCW");
+    stepper.moveTo(initial_homing);  // Set the position to move to
+    initial_homing--;  // Decrease by 1 for next move if needed
+    stepper.run();  // Start moving the stepper
+    delay(5);
+  }
+
+  stepper.setCurrentPosition(0);  // Set the current position as zero for now
+  stepper.setMaxSpeed(100.0);      // Set Max Speed of Stepper (Slower to get better accuracy)
+  stepper.setAcceleration(100.0);  // Set Acceleration of Stepper
+  initial_homing=1;
+
+  // Make the Stepper move CW until the switch is deactivated(LOW)
+  while (digitalRead(HOME_STOP_PIN)) { 
+    // Serial.println("CW");
+    stepper.moveTo(initial_homing);  
+    stepper.run();
+    initial_homing++;
+    delay(5);
+  }
+  
+  stepper.setCurrentPosition(0);
+  Serial.println("Homing Completed");
+  Serial.println("");
+  stepper.setMaxSpeed(1000.0);      // Set Max Speed of Stepper (Faster for regular movements)
+  stepper.setAcceleration(1000.0);  // Set Acceleration of Stepper
+  stepper.setSpeed(500);
+}
+
+void stepperMotorMove() {
+  if(!digitalRead(END_STOP_PIN)) {
+    stepper.setSpeed(500);
+    stepper.runSpeed();
+    stepper.run();  // Move Stepper into position
+  }
 }
 
 void homeScreen() {
@@ -271,6 +324,9 @@ void homeScreen() {
 }
 
 void startProcessScreen() {
+  //home the stepper motor
+  stepperMotorHome();
+
   lcd.clear();
   lcd.print("  Processing    ");
   lcd.setCursor(0,1);
@@ -310,6 +366,7 @@ void startProcess() {
   digitalWrite(COMPRESSOR_PIN, HIGH);
   analogWrite(PUMP_MOTOR_PIN, pumpSpeed);
   activateSSR();
+  stepperMotorMove();
 }
 
 void endProcessScreen() {
@@ -327,11 +384,11 @@ void endProcessScreen() {
   for (int i = lenthOfList; i > 0; i--) {
     runTimeList[i] = runTimeList[i-1];
   }
-  Serial.print("List of times: ");
-  for (int i = 0; i < lenthOfList; i++) {
-    Serial.print(runTimeList[i]);
-    Serial.print(" ");
-  }
+  // Serial.print("List of times: ");
+  // for (int i = 0; i < lenthOfList; i++) {
+  //   Serial.print(runTimeList[i]);
+  //   Serial.print(" ");
+  // }
 }
 
 void endProcess() { 
@@ -486,11 +543,9 @@ void setup() {
 	lcd.print("Spray Pyrolysis");
   // delay(1000); //add later
 
+  stepperMotorHome();
   homeScreen();
   analogReference(EXTERNAL);
-
-  //ToDo: Add stepper motor homeing code here
-  stepperMotorHome();
 }
 
 void loop() {
