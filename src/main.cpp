@@ -3,9 +3,10 @@
 #include <LiquidCrystal_I2C.h>
 #include <Keypad.h>
 #include <AccelStepper.h>
+#include "wifi_api.h"
 
 /* Features
- * Connect  to the wifi
+ * Connect to the wifi
  * Settings in the Android App
  * Start and Stop in both App and keypad
 //  * Long press to go to menu
@@ -13,8 +14,8 @@
 //  * When started is press the keypad to stop
 //  * Limit switch at the door to stop if the door is open
 //  * When door is open, should not be able to start, but can go to menu
- * Once process is ended, x plotter should go back to home and SSR should be off
- * Every to before starting Should auto home x plotter
+//  * Once process is ended, SSR should be off
+//  * Every to before starting Should auto home x plotter
  * When Start is pressed, should wait until set temp is reached
 //  * If the door is open it should say close the door and press to start
 //  * When the process is started, timer should start and when ended should stop, and record the time
@@ -31,7 +32,7 @@
  */
 
 // Set the LCD address to 0x27 for a 16 chars and 2 line display
-LiquidCrystal_I2C lcd(0x27, 16, 2);
+LiquidCrystal_I2C lcd(0x27, 16, 2); //GPIO 22,21 for i2c
 
 //Keypad Variables
 const byte ROWS = 4; //four rows
@@ -42,8 +43,8 @@ char keys[ROWS][COLS] = {
   {'7','8','9'},
   {'*','0','#'}
 };
-byte rowPins[ROWS] = {5, 4, 3, 2}; //connect to the row pinouts of the keypad
-byte colPins[COLS] = {A0, A1, A2}; //connect to the column pinouts of the keypad
+byte rowPins[ROWS] = {12, 14, 27, 26}; //connect to the row pinouts of the keypad
+byte colPins[COLS] = {25, 33, 32}; //connect to the column pinouts of the keypad
 
 Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 
@@ -55,7 +56,7 @@ int currentScreen = 0;
 String screens[numOfScreens][5] = {
     //{Title,   units,   min,   max,  steps}
     {"1.Plotter Speed", "cm/s", "1", "10", "1"}, 
-    {"2.Liquid Speed", "l/m", "0", "255", "10"}, 
+    {"2.Liquid Speed", "l/m", "70", "250", "10"}, 
     {"3.Bed Temp", "*C", "50", "300", "5"},
     {"4.Logs", " ", "0", "0", "0"} //This log wont be displayed
   };
@@ -64,17 +65,17 @@ int parameters[numOfScreens] = {1, 200, 50, 0}; //default values
 uint8_t logScreenPosition = 3;
 
 //INPUTS
-#define DOOR_PIN 8
-#define TEMP_SENSOR_PIN A3 //max temp is 250
-#define HOME_STOP_PIN 6
-#define END_STOP_PIN 7
+#define TEMP_SENSOR_PIN 13 //ADC //max temp is 250
+#define DOOR_PIN 17 //pullup
+#define HOME_STOP_PIN 5 //pullup
+#define END_STOP_PIN 18 //pullup
 
 //OUTPUTS
-#define MOTOR_STEP_PIN 9
-#define MOTOR_DIR_PIN 10
-#define PUMP_MOTOR_PIN 11 //only one direction //IN1 pin
-#define SSR_PIN 12
-#define COMPRESSOR_PIN 13
+#define MOTOR_STEP_PIN 2 //PWM
+#define MOTOR_DIR_PIN 15
+#define PUMP_MOTOR_PIN 23 //only one direction PWM //IN1 pin
+#define SSR_PIN 4
+#define COMPRESSOR_PIN 16
 
 
 //Variables
@@ -136,6 +137,7 @@ void parameterChange(int key);
 void keypadEvent(KeypadEvent key);
 void printMenuScreen();
 void stepperMotorHome();
+void stepperMotorMove();
 void homeScreen();
 void startProcessScreen();
 void startProcess();
@@ -215,7 +217,7 @@ void parameterChange(int key) {
 void keypadEvent(KeypadEvent key) {
   switch (keypad.getState()) {
     case HOLD:
-      if (key == '*' && !goToMenu && processState != START) {
+      if (key == '#' && !goToMenu && processState != START) {
         Serial.println("Going to Menu");
         goToMenu = true;
         currentScreen = 0;
@@ -275,8 +277,8 @@ void stepperMotorHome() {
   lcd.print("Homing Stepper..");
   lcd.setCursor(0,1);
   lcd.print("  Please Wait   ");
-  // Make the Stepper move counter clockwise until the switch is activated(HIGH)
-  while(!digitalRead(HOME_STOP_PIN)) {
+  // Make the Stepper move counter clockwise until the switch is activated(LOW)
+  while(digitalRead(HOME_STOP_PIN)) {
     // Serial.println("CCW");
     stepper.moveTo(initial_homing);  // Set the position to move to
     initial_homing--;  // Decrease by 1 for next move if needed
@@ -290,8 +292,8 @@ void stepperMotorHome() {
   stepper.setAcceleration(100.0);  // Set Acceleration of Stepper
   initial_homing=1;
 
-  // Make the Stepper move CW until the switch is deactivated(LOW)
-  while (digitalRead(HOME_STOP_PIN)) { 
+  // Make the Stepper move CW until the switch is deactivated(HIGH)
+  while (!digitalRead(HOME_STOP_PIN)) { 
     // Serial.println("CW");
     stepper.moveTo(initial_homing);  
     stepper.run();
@@ -311,13 +313,11 @@ void stepperMotorHome() {
 }
 
 void stepperMotorMove() {
-  if(!digitalRead(END_STOP_PIN)) {
-    Serial.println(stepper.speed()); //! donot remove this line
-    // float stepperSteps = parameters[0] * 100; // index of Stepper Speed is 0. (value*100)
-    // Serial.println(stepperSteps);
-    // stepper.setSpeed(stepperSteps); 
+  if(digitalRead(END_STOP_PIN)) {
+    //move stepper motor forward
+    stepper.moveTo(parameters[0] * 100);
     stepper.runSpeed();
-    // stepper.run();  // Move Stepper into position
+    stepper.run();
   } else {
     stepper.setSpeed(0);
   }
@@ -335,7 +335,7 @@ void homeScreen() {
 
 void startProcessScreen() {
   //home the stepper motor
-  stepperMotorHome();
+  stepperMotorHome();//Todo: add after testing
 
   lcd.clear();
   lcd.print("  Processing    ");
@@ -409,7 +409,7 @@ void endProcess() {
 }
 
 void doorCheck() {
-  doorState = digitalRead(DOOR_PIN);
+  doorState = !digitalRead(DOOR_PIN); //Pull up resistor
   if (doorState != doorPrevState) {
     doorPrevState = doorState;
     if (doorState == HIGH) {
@@ -428,7 +428,7 @@ void doorCheck() {
 }
 
 void checkForEndStop() {
-  if (digitalRead(END_STOP_PIN) == HIGH && processState == START) {
+  if (digitalRead(END_STOP_PIN) == LOW && processState == START) {
     processState = END;
     Serial.println("End-Stop Triggered");
     endProcessScreen();
@@ -437,6 +437,7 @@ void checkForEndStop() {
 }
 
 void keyHandler() {
+  //Todo: add debounce here
   char key = keypad.getKey();
   if (key) {
     Serial.print("Key: ");
@@ -483,7 +484,7 @@ float checkTemp() {
   // Serial.println(average);
   
   // convert the value to resistance
-  average = 1023 / average - 1;
+  average = 1023 / average - 1; //for esp32 4095 / average - 1;
   average = SERIESRESISTOR / average;
   // Serial.print("Thermistor resistance "); 
   // Serial.println(average);
@@ -533,9 +534,9 @@ void setup() {
   pinMode(PUMP_MOTOR_PIN, OUTPUT);
   pinMode(SSR_PIN, OUTPUT);
   pinMode(COMPRESSOR_PIN, OUTPUT);
-  pinMode(HOME_STOP_PIN, INPUT);
-  pinMode(END_STOP_PIN, INPUT);
-  pinMode(DOOR_PIN, INPUT);
+  pinMode(HOME_STOP_PIN, INPUT_PULLUP);
+  pinMode(END_STOP_PIN, INPUT_PULLUP);
+  pinMode(DOOR_PIN, INPUT_PULLUP);
   pinMode(TEMP_SENSOR_PIN, INPUT);
 
   digitalWrite(MOTOR_STEP_PIN, LOW);
@@ -555,10 +556,11 @@ void setup() {
 
   stepperMotorHome();
   homeScreen();
-  analogReference(EXTERNAL);
+  // analogReference(EXTERNAL); //not applicable for esp32
 }
 
 void loop() {
+
 	keyHandler();
   if(!goToMenu) {
     doorCheck();
