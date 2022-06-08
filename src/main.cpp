@@ -65,15 +65,15 @@ int parameters[numOfScreens] = {1, 200, 50, 0}; //default values
 uint8_t logScreenPosition = 3;
 
 //INPUTS
-#define DOOR_PIN 17 //pullup
 #define TEMP_SENSOR_PIN 13 //ADC //max temp is 250
+#define DOOR_PIN 17 //pullup
 #define HOME_STOP_PIN 5 //pullup
 #define END_STOP_PIN 18 //pullup
 
 //OUTPUTS
-#define MOTOR_STEP_PIN 23 //PWM
+#define MOTOR_STEP_PIN 2 //PWM
 #define MOTOR_DIR_PIN 15
-#define PUMP_MOTOR_PIN 2 //only one direction PWM //IN1 pin
+#define PUMP_MOTOR_PIN 23 //only one direction PWM //IN1 pin
 #define SSR_PIN 4
 #define COMPRESSOR_PIN 16
 
@@ -217,7 +217,7 @@ void parameterChange(int key) {
 void keypadEvent(KeypadEvent key) {
   switch (keypad.getState()) {
     case HOLD:
-      if (key == '*' && !goToMenu && processState != START) {
+      if (key == '#' && !goToMenu && processState != START) {
         Serial.println("Going to Menu");
         goToMenu = true;
         currentScreen = 0;
@@ -314,12 +314,10 @@ void stepperMotorHome() {
 
 void stepperMotorMove() {
   if(digitalRead(END_STOP_PIN)) {
-    Serial.println(stepper.speed()); //! donot remove this line
-    // float stepperSteps = parameters[0] * 100; // index of Stepper Speed is 0. (value*100)
-    // Serial.println(stepperSteps);
-    // stepper.setSpeed(stepperSteps); 
+    //move stepper motor forward
+    stepper.moveTo(parameters[0] * 100);
     stepper.runSpeed();
-    // stepper.run();  // Move Stepper into position
+    stepper.run();
   } else {
     stepper.setSpeed(0);
   }
