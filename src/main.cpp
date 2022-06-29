@@ -138,6 +138,7 @@ void keypadEvent(KeypadEvent key);
 void printMenuScreen();
 void stepperMotorHome();
 void stepperMotorMove();
+void triggerSSR();
 void homeScreen();
 void startProcessScreen();
 void startProcess();
@@ -336,6 +337,34 @@ void stepperMotorMove() {
   previousDir = presentDir;
 }
 
+unsigned long ssrTimer = millis();
+bool ssrOnFor10Minutes = false; //flag to indicate if SSR is on for initial 10 minutes
+bool ssrCurrentState = false; 
+
+void triggerSSR() {
+  //Turn on the SSR for 20 seconds with out delay
+  if(!ssrOnFor10Minutes){
+    if(millis() - ssrTimer > 5000) { //make this 1000*60*10
+      digitalWrite(SSR_PIN, LOW);
+      ssrOnFor10Minutes = true;
+      Serial.println("SSR was on For first 10 min");
+    }
+    else {
+      digitalWrite(SSR_PIN, HIGH);
+      ssrCurrentState = HIGH;
+    }
+  }
+  else {
+    //toggle the SSR every 10 seconds
+    if(millis() - ssrTimer > 2000) { //make this 1000*60
+      ssrTimer = millis();
+      ssrCurrentState = !ssrCurrentState;
+      digitalWrite(SSR_PIN, ssrCurrentState);
+      Serial.println("SSR State toggle");
+    }
+  }
+}
+
 void homeScreen() {
   lcd.clear();
   lcd.print("  Ready to Use  ");
@@ -388,7 +417,7 @@ void startProcess() {
 
   digitalWrite(COMPRESSOR_PIN, HIGH);
   analogWrite(PUMP_MOTOR_PIN, pumpSpeed);
-  activateSSR();
+  // activateSSR();
   stepperMotorMove();
 }
 
@@ -574,7 +603,7 @@ void setup() {
 }
 
 void loop() {
-
+  triggerSSR();
 	keyHandler();
   if(!goToMenu) {
     doorCheck();
