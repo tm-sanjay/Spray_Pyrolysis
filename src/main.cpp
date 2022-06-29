@@ -312,15 +312,28 @@ void stepperMotorHome() {
   stepper.setSpeed(stepperSteps); 
 }
 
+bool previousDir = false;
+bool presentDir = true;
+
 void stepperMotorMove() {
-  if(digitalRead(END_STOP_PIN)) {
-    //move stepper motor forward
-    stepper.moveTo(parameters[0] * 100);
-    stepper.runSpeed();
-    stepper.run();
-  } else {
-    stepper.setSpeed(0);
+  stepper.setCurrentPosition(0);
+  if(!digitalRead(HOME_STOP_PIN)) {
+    Serial.println("Reversing the Direction!");
+    //reverse the direction every time the home switch is pressed
+    presentDir = !presentDir;
+    delay(1000);
   }
+  if(previousDir == false) {
+      stepper.moveTo(parameters[0] * 100);
+      stepper.runSpeed();
+      stepper.run();
+    }
+  else {
+      stepper.moveTo(-parameters[0] * 100);
+      stepper.runSpeed();
+      stepper.run();
+    }
+  previousDir = presentDir;
 }
 
 void homeScreen() {
@@ -470,7 +483,7 @@ float checkTemp() {
   // take N samples in a row, with a slight delay
   for (i=0; i< NUMSAMPLES; i++) {
     samples[i] = analogRead(TEMP_SENSOR_PIN);
-    delay(10);
+    delay(5);
   }
   
   // average all the samples out
@@ -550,11 +563,12 @@ void setup() {
 
   // initialize the LCD
 	lcd.begin();
+  // lcd.init();
 	lcd.backlight();
 	lcd.print("Spray Pyrolysis");
   // delay(1000); //add later
 
-  stepperMotorHome();
+  // stepperMotorHome();
   homeScreen();
   // analogReference(EXTERNAL); //not applicable for esp32
 }
