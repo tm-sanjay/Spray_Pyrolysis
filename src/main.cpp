@@ -56,7 +56,7 @@ int currentScreen = 0;
 String screens[numOfScreens][5] = {
     //{Title,   units,   min,   max,  steps}
     {"1.Plotter Speed", "cm/s", "1", "10", "1"}, 
-    {"2.Liquid Speed", "l/m", "70", "250", "10"}, 
+    {"2.Liquid Speed", "ml/m", "70", "250", "10"}, 
     {"3.Bed Temp", "*C", "50", "300", "5"},
     {"4.Logs", " ", "0", "0", "0"} //This log wont be displayed
   };
@@ -380,7 +380,7 @@ void startProcessScreen() {
   stepperMotorHome();//Todo: add after testing
 
   lcd.clear();
-  lcd.print("  Processing    ");
+  lcd.print("Processing_400*C");
   lcd.setCursor(0,1);
   lcd.print("  Press to stop ");
   //start the timer
