@@ -447,7 +447,7 @@ void endProcess() {
   processState = END;
   digitalWrite(COMPRESSOR_PIN, LOW);
   analogWrite(PUMP_MOTOR_PIN, 0);
-  digitalWrite(SSR_PIN, LOW);
+  //digitalWrite(SSR_PIN, LOW);
 }
 
 void doorCheck() {
