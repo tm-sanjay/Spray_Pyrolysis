@@ -596,7 +596,7 @@ void setup() {
 	lcd.backlight();
 	lcd.print("Spray Pyrolysis");
   // delay(1000); //add later
-
+  setup_wifi();
   // stepperMotorHome();
   homeScreen();
   // analogReference(EXTERNAL); //not applicable for esp32
