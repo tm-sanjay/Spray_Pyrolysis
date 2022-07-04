@@ -34,8 +34,7 @@ class _MyHomePageState extends State<MyHomePage> {
   final APIController _apiController = Get.find();
 
   void _startAction() {
-    _apiController.getStatus();
-    // _apiController.startProcess();
+    _apiController.startProcess();
     setState(() {
       _isRunning = true;
     });
