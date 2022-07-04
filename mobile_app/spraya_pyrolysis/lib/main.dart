@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:spraya_pyrolysis/inital_binding.dart';
 import 'package:spraya_pyrolysis/local_api.dart';
+import 'package:spraya_pyrolysis/number_widget.dart';
 
 void main() {
   runApp(const MyApp());
@@ -67,17 +68,17 @@ class _MyHomePageState extends State<MyHomePage> {
               ListTile(
                 leading: Icon(Icons.thermostat),
                 title: Text('Temperature'),
-                onTap: () {},
+                onTap: onTempPressed,
               ),
               ListTile(
                 leading: Icon(Icons.water),
-                title: Text('Pump'),
-                onTap: () {},
+                title: Text('Liquid Speed'),
+                onTap: onLiquidSpeedPressed,
               ),
               ListTile(
                 leading: Icon(Icons.speed),
                 title: Text('Plotter Speed'),
-                onTap: () {},
+                onTap: onPlotterSpeedPressed,
               ),
             ],
           ),
@@ -114,6 +115,94 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
         ),
       ),
+    );
+  }
+
+  void onPlotterSpeedPressed() {
+    int value = 0;
+    Get.defaultDialog(
+      title: 'Set Plotter Speed',
+      content: NumberStepButton(
+        minValue: 1,
+        onChanged: (_value) {
+          value = _value;
+        },
+      ),
+      actions: <Widget>[
+        TextButton(
+          child: Text('Set'),
+          onPressed: () {
+            _apiController.setPlotterSpeed(value);
+            Get.back();
+          },
+        ),
+        TextButton(
+          child: Text('Cancel'),
+          onPressed: () {
+            Get.back();
+          },
+        ),
+      ],
+    );
+  }
+
+  void onTempPressed() {
+    int value = 400;
+    Get.defaultDialog(
+      title: 'Set Temperature',
+      content: NumberStepButton(
+        minValue: 400,
+        maxValue: 450,
+        steps: 5,
+        onChanged: (_value) {
+          value = _value;
+        },
+      ),
+      actions: <Widget>[
+        TextButton(
+          child: Text('Set'),
+          onPressed: () {
+            _apiController.setTemperature(value);
+            Get.back();
+          },
+        ),
+        TextButton(
+          child: Text('Cancel'),
+          onPressed: () {
+            Get.back();
+          },
+        ),
+      ],
+    );
+  }
+
+  void onLiquidSpeedPressed() {
+    int value = 70;
+    Get.defaultDialog(
+      title: 'Set Liquid Speed',
+      content: NumberStepButton(
+        minValue: 70,
+        maxValue: 250,
+        steps: 10,
+        onChanged: (_value) {
+          value = _value;
+        },
+      ),
+      actions: <Widget>[
+        TextButton(
+          child: Text('Set'),
+          onPressed: () {
+            _apiController.setPumpSpeed(value);
+            Get.back();
+          },
+        ),
+        TextButton(
+          child: Text('Cancel'),
+          onPressed: () {
+            Get.back();
+          },
+        ),
+      ],
     );
   }
 

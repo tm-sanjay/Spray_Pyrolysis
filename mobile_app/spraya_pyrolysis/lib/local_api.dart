@@ -43,7 +43,7 @@ class APIController extends GetxController {
   }
 
   //make a post request to set the temp
-  Future<void> setTemp(int value) async {
+  Future<void> setTemperature(int value) async {
     try {
       final uri = Uri.parse(_endpoint + '/temp').replace(queryParameters: {
         _paramKey: value.toString(),
