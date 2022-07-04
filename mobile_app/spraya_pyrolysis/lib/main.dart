@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:spraya_pyrolysis/inital_binding.dart';
+import 'package:spraya_pyrolysis/local_api.dart';
 
 void main() {
   runApp(const MyApp());
@@ -9,10 +12,11 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return GetMaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Spray Pyrolysis',
       home: MyHomePage(),
+      initialBinding: InitialBinding(),
     );
   }
 }
@@ -27,13 +31,18 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   bool _isRunning = false;
 
+  final APIController _apiController = Get.find();
+
   void _startAction() {
+    _apiController.getStatus();
+    // _apiController.startProcess();
     setState(() {
       _isRunning = true;
     });
   }
 
   void _stopAction() {
+    _apiController.stopProcess();
     setState(() {
       _isRunning = false;
     });
