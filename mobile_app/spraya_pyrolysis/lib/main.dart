@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:spraya_pyrolysis/inital_binding.dart';
@@ -31,20 +33,48 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   bool _isRunning = false;
+  String _statusTitle = 'Ready to Use';
+
+  int plotterSpeed = 1;
+  int pumpSpeed = 70;
+  int temprature = 400;
 
   final APIController _apiController = Get.find();
 
+  late Timer _timer;
+  int _timeCounter = 0;
+
+  //start the timer
+  void _startTimer() {
+    _timeCounter = 0;
+    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
+      setState(() {
+        _timeCounter++;
+      });
+    });
+  }
+
+  //stop timer
+  void _stopTimer() {
+    _timer.cancel();
+  }
+
   void _startAction() {
+    //start timer
+    _startTimer();
     _apiController.startProcess();
     setState(() {
       _isRunning = true;
+      _statusTitle = 'Processing...';
     });
   }
 
   void _stopAction() {
+    _stopTimer();
     _apiController.stopProcess();
     setState(() {
       _isRunning = false;
+      _statusTitle = 'Time taken: $_timeCounter sec';
     });
   }
 
@@ -54,6 +84,7 @@ class _MyHomePageState extends State<MyHomePage> {
       child: Scaffold(
         drawer: Drawer(
           child: ListView(
+            physics: NeverScrollableScrollPhysics(),
             children: <Widget>[
               DrawerHeader(
                 child: Text('Spray Pyrolysis',
@@ -86,33 +117,102 @@ class _MyHomePageState extends State<MyHomePage> {
         appBar: AppBar(
           title: Text('Spray Pyrolysis'),
         ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: <Widget>[
-              Text(
-                _isRunning ? 'Running' : 'Stopped',
-                style: Theme.of(context).textTheme.headline4,
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  iconButton(
-                    "Start",
-                    Icons.run_circle_outlined,
-                    _startAction,
-                    _isRunning ? Colors.grey.shade600 : Colors.green,
-                  ),
-                  iconButton(
-                    "Stop",
-                    Icons.stop_circle_outlined,
-                    _stopAction,
-                    !_isRunning ? Colors.grey.shade600 : Colors.redAccent,
-                  ),
-                ],
-              ),
-            ],
-          ),
+        body: Stack(
+          children: [
+            _statusTitle == "Ready to Use"
+                ? Image(image: AssetImage('assets/bg.jpeg'))
+                : Container(),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                _statusTitle != "Ready to Use"
+                    ? Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          color: _isRunning
+                              ? Color.fromARGB(204, 255, 82, 82)
+                              : Color.fromARGB(118, 33, 149, 243),
+                        ),
+                        child: Text(
+                          _statusTitle,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 32,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      )
+                    : Container(),
+                _isRunning
+                    ? Container(
+                        padding: const EdgeInsets.all(0),
+                        height: MediaQuery.of(context).size.height * 0.25,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Text('Plotter Speed: $pumpSpeed',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontFamily: 'Roboto',
+                                  // fontWeight: FontWeight.bold,
+                                )),
+                            Text('Liquid Speed: $plotterSpeed',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  // fontWeight: FontWeight.bold,
+                                )),
+                            Text('Temperature: $temprature' '°C',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  // fontWeight: FontWeight.bold,
+                                )),
+                          ],
+                        ),
+                      )
+                    : Container(
+                        padding: const EdgeInsets.all(0),
+                        height: MediaQuery.of(context).size.height * 0.25,
+                      ),
+                _statusTitle == "Ready to Use"
+                    ? Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          color: Color.fromARGB(118, 33, 149, 243),
+                        ),
+                        child: Text(
+                          "Ready to Use",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 32,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      )
+                    : Container(),
+                SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    iconButton(
+                      "Start",
+                      Icons.run_circle_outlined,
+                      _startAction,
+                      _isRunning ? Colors.grey.shade600 : Colors.green,
+                    ),
+                    iconButton(
+                      "Stop",
+                      Icons.stop_circle_outlined,
+                      _stopAction,
+                      !_isRunning ? Colors.grey.shade600 : Colors.redAccent,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -132,6 +232,9 @@ class _MyHomePageState extends State<MyHomePage> {
         TextButton(
           child: Text('Set'),
           onPressed: () {
+            setState(() {
+              plotterSpeed = value;
+            });
             _apiController.setPlotterSpeed(value);
             Get.back();
           },
@@ -162,6 +265,9 @@ class _MyHomePageState extends State<MyHomePage> {
         TextButton(
           child: Text('Set'),
           onPressed: () {
+            setState(() {
+              temprature = value;
+            });
             _apiController.setTemperature(value);
             Get.back();
           },
@@ -192,6 +298,9 @@ class _MyHomePageState extends State<MyHomePage> {
         TextButton(
           child: Text('Set'),
           onPressed: () {
+            setState(() {
+              pumpSpeed = value;
+            });
             _apiController.setPumpSpeed(value);
             Get.back();
           },
