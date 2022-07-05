@@ -3,7 +3,6 @@
 #include <LiquidCrystal_I2C.h>
 #include <Keypad.h>
 #include <AccelStepper.h>
-#include "wifi_api.h"
 
 /* Features
  * Connect to the wifi
@@ -130,7 +129,6 @@ long initial_homing = -1;  // Used to Home Stepper at startup
 // Create a new instance of the AccelStepper class:
 AccelStepper stepper = AccelStepper(motorInterfaceType, MOTOR_STEP_PIN, MOTOR_DIR_PIN);
 
-
 //inital declarations
 void inputAction(char input);
 void parameterChange(int key);
@@ -148,6 +146,90 @@ void checkForEndStop();
 void keyHandler();
 float checkTemp();
 void activateSSR();
+
+//------------------Wifi setup-------------------
+#include <ESPAsyncWebServer.h>
+
+AsyncWebServer server(80);
+
+const char* PARAM_KEY = "fun"; //query parameter KEY
+
+void notFound(AsyncWebServerRequest *request) {
+    request->send(404, "text/plain", "Page Not found");
+}
+
+void setup_wifi() {
+  WiFi.mode(WIFI_AP_STA);
+    WiFi.softAP("esp-AP","12345678");
+    
+    Serial.print("AP IP address: ");
+    IPAddress myIP = WiFi.softAPIP();
+    Serial.println(myIP);
+
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+      request->send(200, "text/plain", "Spray Pyrolysis");
+    });
+
+    //start process
+    server.on("/start", HTTP_GET, [](AsyncWebServerRequest *request){
+      Serial.println("Strated Form http");
+      processState = START;
+      startProcessScreen();
+      Serial.println("Starting Process");
+      request->send(200, "text/plain", "ESP:Started");
+    });
+    //stop Process
+    server.on("/stop", HTTP_GET, [](AsyncWebServerRequest *request){
+      Serial.println("Stoped Form http");
+      processState = END;
+      endProcessScreen();
+      Serial.println("Process Ended");
+      request->send(200, "text/plain", "ESP:Stopped");
+    });
+    //update temperature
+    server.on("/temp", HTTP_POST, [](AsyncWebServerRequest *request){
+      String message;
+      if (request->hasParam(PARAM_KEY)) {
+        message = request->getParam(PARAM_KEY)->value();
+        Serial.print("http /temp:");
+        Serial.println(message.toInt());
+        parameters[2] = message.toInt();
+      } else {
+        message = "No message sent";
+      }
+      request->send(200, "text/plain", "Recived: " + message);
+    });
+    //update Pump speed
+    server.on("/pump", HTTP_POST, [](AsyncWebServerRequest *request){
+      String message;
+      if (request->hasParam(PARAM_KEY)) {
+        message = request->getParam(PARAM_KEY)->value();
+        Serial.print("http /pump:");
+        Serial.println(message.toInt());
+        parameters[1] = message.toInt();
+      } else {
+        message = "No message sent";
+      }
+      request->send(200, "text/plain", "Recived: " + message);
+    });
+    //update plotter speed
+    server.on("/plotter", HTTP_POST, [](AsyncWebServerRequest *request){
+      String message;
+      if (request->hasParam(PARAM_KEY)) {
+        message = request->getParam(PARAM_KEY)->value();
+        Serial.print("http /plotter:");
+        Serial.println(message.toInt());
+        parameters[0] = message.toInt();
+      } else {
+        message = "No message sent";
+      }
+      request->send(200, "text/plain", "Recived: " + message);
+    });
+    server.onNotFound(notFound);
+
+    server.begin();
+}
+//---------------------Ens wifi-setup-----------------
 
 //---------------Menu Functions -----------------
 void inputAction(char input) {
@@ -279,13 +361,13 @@ void stepperMotorHome() {
   lcd.setCursor(0,1);
   lcd.print("  Please Wait   ");
   // Make the Stepper move counter clockwise until the switch is activated(LOW)
-  while(digitalRead(HOME_STOP_PIN)) {
-    // Serial.println("CCW");
-    stepper.moveTo(initial_homing);  // Set the position to move to
-    initial_homing--;  // Decrease by 1 for next move if needed
-    stepper.run();  // Start moving the stepper
-    delay(5);
-  }
+  // while(digitalRead(HOME_STOP_PIN)) {
+  //   // Serial.println("CCW");
+  //   stepper.moveTo(initial_homing);  // Set the position to move to
+  //   initial_homing--;  // Decrease by 1 for next move if needed
+  //   stepper.run();  // Start moving the stepper
+  //   delay(5);
+  // }
 
   stepper.setCurrentPosition(0);  // Set the current position as zero for now
   stepper.setSpeed(100.0);        // Set the speed of the stepper
@@ -294,13 +376,13 @@ void stepperMotorHome() {
   initial_homing=1;
 
   // Make the Stepper move CW until the switch is deactivated(HIGH)
-  while (!digitalRead(HOME_STOP_PIN)) { 
-    // Serial.println("CW");
-    stepper.moveTo(initial_homing);  
-    stepper.run();
-    initial_homing++;
-    delay(5);
-  }
+  // while (!digitalRead(HOME_STOP_PIN)) { 
+  //   // Serial.println("CW");
+  //   stepper.moveTo(initial_homing);  
+  //   stepper.run();
+  //   initial_homing++;
+  //   delay(5);
+  // }
   
   stepper.setCurrentPosition(0);
   Serial.println("Homing Completed");
@@ -356,7 +438,7 @@ void triggerSSR() {
   }
   else {
     //toggle the SSR every 10 seconds
-    if(millis() - ssrTimer > 2000) { //make this 1000*60
+    if(millis() - ssrTimer > 20000) { //make this 1000*60
       ssrTimer = millis();
       ssrCurrentState = !ssrCurrentState;
       digitalWrite(SSR_PIN, ssrCurrentState);
