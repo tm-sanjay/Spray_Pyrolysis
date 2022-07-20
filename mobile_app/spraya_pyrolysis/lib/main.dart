@@ -158,13 +158,13 @@ class _MyHomePageState extends State<MyHomePage> {
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            Text('Plotter Speed: $pumpSpeed',
+                            Text('Plotter Speed: $plotterSpeed cm/s',
                                 style: TextStyle(
                                   fontSize: 20,
                                   fontFamily: 'Roboto',
                                   // fontWeight: FontWeight.bold,
                                 )),
-                            Text('Liquid Speed: $plotterSpeed',
+                            Text('Liquid Speed: $pumpSpeed ml/min',
                                 style: TextStyle(
                                   fontSize: 20,
                                   // fontWeight: FontWeight.bold,
@@ -321,13 +321,13 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void onLiquidSpeedPressed() {
-    int value = 70;
+    int value = 2;
     Get.defaultDialog(
       title: 'Set Liquid Speed',
       content: NumberStepButton(
-        minValue: 70,
-        maxValue: 250,
-        steps: 10,
+        minValue: 2,
+        maxValue: 17,
+        steps: 1,
         onChanged: (_value) {
           value = _value;
         },
@@ -375,3 +375,24 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 }
+
+// bool checkExpiration() {
+//   final expirationDate = DateTime(2022, 7, 6);
+//   final now = DateTime.now();
+//   bool isExpired = now.isAfter(expirationDate);
+//   debugPrint('isExpired: $isExpired');
+//   return isExpired;
+// }
+
+// class ExpiredScreen extends StatelessWidget {
+//   const ExpiredScreen({Key? key}) : super(key: key);
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       body: Center(
+//         child: Text('Something went wrong'),
+//       ),
+//     );
+//   }
+// }
