@@ -98,4 +98,23 @@ class APIController extends GetxController {
       debugPrint(e.toString());
     }
   }
+
+  //make a post request to set SSR on time
+  Future<void> setSSROnTime(int value) async {
+    try {
+      final uri = Uri.parse(_endpoint + '/ssrontime').replace(queryParameters: {
+        _paramKey: value.toString(),
+      });
+      final response = await http.post(uri);
+
+      if (response.statusCode == 200) {
+        debugPrint('SSR on time set to: ');
+      } else {
+        debugPrint('StatusCode: ' + response.statusCode.toString());
+      }
+      debugPrint(response.body);
+    } catch (e) {
+      debugPrint(e.toString());
+    }
+  }
 }

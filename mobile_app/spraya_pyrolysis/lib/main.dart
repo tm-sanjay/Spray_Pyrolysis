@@ -35,6 +35,7 @@ class _MyHomePageState extends State<MyHomePage> {
   bool _isRunning = false;
   String _statusTitle = 'Ready to Use';
 
+  int ssrOnTime = 5;
   int plotterSpeed = 1;
   int pumpSpeed = 70;
   int temprature = 400;
@@ -95,6 +96,11 @@ class _MyHomePageState extends State<MyHomePage> {
                 decoration: BoxDecoration(
                   color: Colors.blue,
                 ),
+              ),
+              ListTile(
+                leading: Icon(Icons.timeline_sharp),
+                title: Text('SSR On Time'),
+                onTap: onSSROnTimePressed,
               ),
               ListTile(
                 leading: Icon(Icons.thermostat),
@@ -215,6 +221,38 @@ class _MyHomePageState extends State<MyHomePage> {
           ],
         ),
       ),
+    );
+  }
+
+  void onSSROnTimePressed() {
+    int value = 0;
+    Get.defaultDialog(
+      title: 'Set SSR on Time',
+      content: NumberStepButton(
+        minValue: 5,
+        maxValue: 20,
+        onChanged: (_value) {
+          value = _value;
+        },
+      ),
+      actions: <Widget>[
+        TextButton(
+          child: Text('Set'),
+          onPressed: () {
+            setState(() {
+              ssrOnTime = value;
+            });
+            _apiController.setSSROnTime(value);
+            Get.back();
+          },
+        ),
+        TextButton(
+          child: Text('Cancel'),
+          onPressed: () {
+            Get.back();
+          },
+        ),
+      ],
     );
   }
 
