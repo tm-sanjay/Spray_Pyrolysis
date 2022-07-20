@@ -5,9 +5,9 @@
 #include <AccelStepper.h>
 
 /* Features
- * Connect to the wifi
- * Settings in the Android App
- * Start and Stop in both App and keypad
+//  * Connect to the wifi
+//  * Settings in the Android App
+//  * Start and Stop in both App and keypad
 //  * Long press to go to menu
 //  * In normal mode, press the keypad to start
 //  * When started is press the keypad to stop
@@ -15,18 +15,18 @@
 //  * When door is open, should not be able to start, but can go to menu
 //  * Once process is ended, SSR should be off
 //  * Every to before starting Should auto home x plotter
- * When Start is pressed, should wait until set temp is reached
+//  * When Start is pressed, should wait until set temp is reached
 //  * If the door is open it should say close the door and press to start
 //  * When the process is started, timer should start and when ended should stop, and record the time
- * every thing should be reflected in the app
+//  * every thing should be reflected in the app
  */
 
 /* Menu to be added
- * Settings 
+//  * Settings 
 //  * - X plotter Speed
 //  * - Water Pump Speed
 //  * - Base Plate Temperature
- * Logs
+//  * Logs
 //  * - all run time 
  */
 
