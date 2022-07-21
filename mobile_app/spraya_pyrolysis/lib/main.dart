@@ -37,7 +37,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   int ssrOnTime = 5;
   int plotterSpeed = 1;
-  int pumpSpeed = 70;
+  int pumpSpeed = 2;
   int temprature = 400;
 
   final APIController _apiController = Get.find();
