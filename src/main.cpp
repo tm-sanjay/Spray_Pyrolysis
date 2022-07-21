@@ -55,11 +55,11 @@ int currentScreen = 0;
 String screens[numOfScreens][5] = {
     //{Title,   units,   min,   max,  steps}
     {"1.Plotter Speed", "cm/s", "1", "10", "1"}, 
-    {"2.Liquid Speed", "ml/m", "70", "250", "10"}, 
+    {"2.Liquid Speed", "ml/m", "2", "17", "1"}, 
     {"3.Bed Temp", "*C", "50", "300", "5"},
     {"4.Logs", " ", "0", "0", "0"} //This log wont be displayed
   };
-int parameters[numOfScreens] = {1, 200, 50, 0}; //default values
+int parameters[numOfScreens] = {1, 2, 50, 0}; //default values
 
 uint8_t logScreenPosition = 3;
 
@@ -128,6 +128,11 @@ unsigned long tempCheckTime = 0;
 long initial_homing = -1;  // Used to Home Stepper at startup
 // Create a new instance of the AccelStepper class:
 AccelStepper stepper = AccelStepper(motorInterfaceType, MOTOR_STEP_PIN, MOTOR_DIR_PIN);
+
+unsigned long ssrTimer = millis();
+bool ssrOnFor10Minutes = false; //flag to indicate if SSR is on for initial 10 minutes
+bool ssrCurrentState = false; 
+unsigned long ssrOnTime = 10;//in minutes
 
 //inital declarations
 void inputAction(char input);
@@ -225,6 +230,20 @@ void setup_wifi() {
       }
       request->send(200, "text/plain", "Recived: " + message);
     });
+    //update ssrOnTime
+    server.on("/ssrontime", HTTP_POST, [](AsyncWebServerRequest *request){
+      String message;
+      if (request->hasParam(PARAM_KEY)) {
+        message = request->getParam(PARAM_KEY)->value();
+        Serial.print("http /ssrontime:");
+        Serial.println(message.toInt());
+        ssrOnTime = message.toInt();
+      } else {
+        message = "No message sent";
+      }
+      request->send(200, "text/plain", "Recived: " + message);
+    });
+
     server.onNotFound(notFound);
 
     server.begin();
@@ -419,9 +438,6 @@ void stepperMotorMove() {
   previousDir = presentDir;
 }
 
-unsigned long ssrTimer = millis();
-bool ssrOnFor10Minutes = false; //flag to indicate if SSR is on for initial 10 minutes
-bool ssrCurrentState = false; 
 
 void triggerSSR() {
   //Turn on the SSR for 20 seconds with out delay
@@ -438,7 +454,7 @@ void triggerSSR() {
   }
   else {
     //toggle the SSR every 10 seconds
-    if(millis() - ssrTimer > 20000) { //make this 1000*60
+    if(millis() - ssrTimer > ssrOnTime * 1000) { //make this 1000*60
       ssrTimer = millis();
       ssrCurrentState = !ssrCurrentState;
       digitalWrite(SSR_PIN, ssrCurrentState);
@@ -453,7 +469,8 @@ void homeScreen() {
   lcd.setCursor(0,1);
   lcd.print(" Press to start ");
 
-  pumpSpeed = parameters[1]; //liquid speed position is 1
+  pumpSpeed = map(parameters[1], 2, 17, 70, 255);
+  // pumpSpeed = parameters[1]; //liquid speed position is 1
   Serial.println("Pump Speed:" + String(pumpSpeed));
 }
 
@@ -494,7 +511,7 @@ void progressScreen() {
 }
 
 void startProcess() {
-  progressScreen();
+  // progressScreen();
   checkForEndStop();
 
   digitalWrite(COMPRESSOR_PIN, HIGH);
