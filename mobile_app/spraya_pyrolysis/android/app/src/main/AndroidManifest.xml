@@ -2,7 +2,7 @@
     package="com.example.spraya_pyrolysis">
     <uses-permission android:name="android.permission.INTERNET"/>
    <application
-        android:label="spraya_pyrolysis"
+        android:label="Spray pyrolysis"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
