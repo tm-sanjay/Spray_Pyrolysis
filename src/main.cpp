@@ -468,15 +468,14 @@ void homeScreen() {
   lcd.print("  Ready to Use  ");
   lcd.setCursor(0,1);
   lcd.print(" Press to start ");
-
-  pumpSpeed = map(parameters[1], 2, 17, 70, 255);
-  // pumpSpeed = parameters[1]; //liquid speed position is 1
-  Serial.println("Pump Speed:" + String(pumpSpeed));
 }
 
 void startProcessScreen() {
   //home the stepper motor
   stepperMotorHome();//Todo: add after testing
+
+  pumpSpeed = map(parameters[1], 2, 17, 70, 255);
+  Serial.println("Pump Speed:" + String(pumpSpeed));
 
   lcd.clear();
   lcd.print("Processing_400*C");
